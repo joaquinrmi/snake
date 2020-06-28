@@ -7,24 +7,24 @@
     <link rel="stylesheet" href="styles.css" >
     <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap" rel="stylesheet">
 
-    <title>Snake</title>
+    <title>Gluttonous ¿Worm?</title>
 </head>
 <body id="body">
     <div id="main">
         <div id="scoreboard">
-            <span> PuNtos: </span>
+            <span>Puntos:</span>
             <span id="score"> 0 </span>
         </div>
         <div id="game-container" >
             <canvas class="aspect-ratio" id="game-canvas" width="31" height="31" ></canvas>
             <canvas class="aspect-ratio" id="background-canvas" width="31" height="31" ></canvas>
             <div class="game-overlay aspect-ratio" id="game-start">
-                <div> Utiliza las <span class="text-emphasis" >flechas direccionales</span> o <span class="text-emphasis" >desliza el dedo</span> para controlar la serpiente </div>
-                <button onclick="startGame()"> ¡cOmeNZar! </button>
+                <div>Movés el <span id="worm">gusano</span> y comés las <span id="food">frutas</span>. No es tan difícil.</div>
+                <button class="start-button" onclick="startGame()">A ver qué onda</button>
             </div>
             <div class="game-overlay aspect-ratio" id="game-over">
-                <div> JueGo terMiNAdO </div>
-                <button onclick="startGame()"> ¡otRa vEz! </button>
+                <div>Juego terminado</div>
+                <button class="start-button" onclick="startGame()">Otra vez</button>
             </div>
         </div>
     </div>
