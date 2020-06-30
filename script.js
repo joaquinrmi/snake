@@ -26,6 +26,9 @@ const bgCtx = backgroundCanvas.getContext('2d');
 const canvasW = canvas.width;
 const canvasH = canvas.height;
 
+const worldWidth = canvasW - 1;
+const worldHeight = canvasH - 1;
+
 const colorPalette = [
     new Color(31, 31, 31),
     new Color(77, 83, 60),
@@ -65,6 +68,8 @@ var touchPrevY;
 var touchDeltaX;
 var touchDeltaY;
 
+var movementCatched = false;
+
 document.ontouchstart = function (event)
 { 
     touchPrevX = event.touches[0].screenX;
@@ -74,50 +79,67 @@ document.ontouchstart = function (event)
 }
 
 document.ontouchmove = function (event)
-{ 
-    touchDeltaX += event.touches[0].screenX - touchPrevX;
-    touchDeltaY += event.touches[0].screenY - touchPrevY;
+{
+    if(!movementCatched)
+    {
+        touchDeltaX += event.touches[0].screenX - touchPrevX;
+        touchDeltaY += event.touches[0].screenY - touchPrevY;
 
-    touchPrevX = event.touches[0].screenX;
-    touchPrevY = event.touches[0].screenY;
+        touchPrevX = event.touches[0].screenX;
+        touchPrevY = event.touches[0].screenY;
 
-    if(touchDeltaY <= -touchDeltaTreshold)
-    {
-        moveDirY = -1; moveDirX = 0; touchDeltaX = touchDeltaY = 0;
-    }
-    else if(touchDeltaX >= touchDeltaTreshold)
-    {
-        moveDirX =  1; moveDirY = 0; touchDeltaX = touchDeltaY = 0;
-    }
-    else if(touchDeltaY >= touchDeltaTreshold)
-    {
-        moveDirY =  1; moveDirX = 0; touchDeltaX = touchDeltaY = 0;
-    }
-    else if(touchDeltaX <= -touchDeltaTreshold) 
-    {
-        moveDirX = -1; moveDirY = 0; touchDeltaX = touchDeltaY = 0;
+        if(touchDeltaY <= -touchDeltaTreshold)
+        {
+            if(moveDir == "down") return;
+             moveDir = "up";
+        }
+        else if(touchDeltaX >= touchDeltaTreshold)
+        {
+            if(moveDir == "left") return;
+            moveDir = "right";
+        }
+        else if(touchDeltaY >= touchDeltaTreshold)
+        {
+            if(moveDir == "up") return;
+            moveDir = "down";
+        }
+        else if(touchDeltaX <= -touchDeltaTreshold) 
+        {
+            if(moveDir == "right") return;
+            moveDir = "left";
+        }
+
+        movementCatched = true;
     }
 }
 
 document.onkeydown = function (event)
 {
-    switch (event.key)
+    if(!movementCatched)
     {
-        case 'ArrowUp':
-            moveDirY = -1; moveDirX = 0;
-            break;
+        switch (event.key)
+        {
+            case 'ArrowUp':
+                if(moveDir == "down") return;
+                moveDir = "up";
+                break;
 
-        case 'ArrowRight':
-            moveDirX =  1; moveDirY = 0;
-            break;
+            case 'ArrowRight':
+                if(moveDir == "left") return;
+                moveDir = "right";
+                break;
 
-        case 'ArrowDown':
-            moveDirY =  1; moveDirX = 0;
-            break;
+            case 'ArrowDown':
+                if(moveDir == "up") return;
+                moveDir = "down";
+                break;
 
-        case 'ArrowLeft':
-            moveDirX = -1; moveDirY = 0;
-            break;
+            case 'ArrowLeft':
+                if(moveDir == "right") return;
+                moveDir = "left";
+                break;
+        }
+        movementCatched = true;
     }
 }
 
@@ -134,6 +156,147 @@ function drawPixel(x, y, color)
     imageData.data[ ( y * ( canvasW ) * 4 ) + ( x * 4 ) + 3 ] = color.a * 255;
 }
 
+class Pos
+{
+    constructor(x, y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+class WormPiece
+{
+    constructor(pos, previous)
+    {
+        this.x = pos.x;
+        this.y = pos.y;
+        this.previous = previous;
+    }
+}
+
+class Worm
+{
+    constructor(headPos, direction, large)
+    {
+        this.head = new WormPiece(headPos, undefined);
+
+        var backPos = new Pos(headPos.x, headPos.y);
+
+        var currentPiece = this.head;
+        switch(direction)
+        {
+        case "up":
+            currentPiece = this.createSomePieces(currentPiece, large, function(lastPos){
+                lastPos.y -= 1;
+            });
+            break;
+
+        case "down":
+            currentPiece = this.createSomePieces(currentPiece, large, function(lastPos){
+                lastPos.y += 1;
+            });
+            break;
+
+        case "left":
+            currentPiece = this.createSomePieces(currentPiece, large, function(lastPos){
+                lastPos.x -= 1;
+            });
+            break;
+
+        case "right":
+            currentPiece = this.createSomePieces(currentPiece, large, function(lastPos){
+                lastPos.x += 1;
+            });
+            break;
+        }
+
+        this.back = currentPiece;
+    }
+
+    move(direction)
+    {
+        switch(direction)
+        {
+        case "up":
+            this.moveUp();
+            break;
+
+        case "down":
+            this.moveDown();
+            break;
+
+        case "left":
+            this.moveLeft();
+            break;
+
+        case "right":
+            this.moveRight();
+            break;
+        }
+    }
+
+    moveUp()
+    {
+        this.fromLastToFirst(this.head.x, this.head.y - 1);
+    }
+
+    moveDown()
+    {
+        this.fromLastToFirst(this.head.x, this.head.y + 1);
+    }
+
+    moveLeft()
+    {
+        this.fromLastToFirst(this.head.x - 1, this.head.y);
+    }
+
+    moveRight()
+    {
+        this.fromLastToFirst(this.head.x + 1, this.head.y);
+    }
+
+    fromLastToFirst(x, y)
+    {
+        var piece = this.back;
+        this.back = this.back.previous;
+
+        piece.x = x;
+        piece.y = y;
+
+        this.head.previous = piece;
+        this.head = piece;
+        this.head.previous = undefined;
+    }
+
+    addNewPiece(position)
+    {
+        var newPiece = new WormPiece(position, undefined);
+        this.head.previous = newPiece;
+        this.head = newPiece;
+    }
+
+    addNewPieceAtBack(position)
+    {
+        var newPiece = new WormPiece(position, this.back);
+        this.back = newPiece;
+    }
+
+    createSomePieces(currentPiece, large, posChanger)
+    {
+        var lastPos = new Pos(currentPiece.x, currentPiece.y);
+
+        for(var i = 0; i < large; ++i)
+        {
+            posChanger(lastPos);
+
+            currentPiece = new WormPiece(lastPos, currentPiece);
+        }
+
+        return currentPiece;
+    }
+}
+
 function SnakePiece(x, y, previous) {
     this.x = x;
     this.y = y;
@@ -141,34 +304,39 @@ function SnakePiece(x, y, previous) {
     this.previous = previous;
 }
 
-function Pos(x, y)
-{
-    this.x = x;
-    this.y = y;
-}
+var worm;
+var world;
+var availablePos;
+var availablePosRegister;
 
 function startGame()
 {
-    moveDirX = 0;
-    moveDirY = -1;
+    moveDir = "up";
 
     timeToMove = 150;
     timeSinceLastMove = 0;
     foodEaten = 0;
 
+    world = new Array(worldWidth * worldHeight);
     availablePos = [];
-    for (var i = 1; i < canvasH - 1; i++)
+    availablePosRegister = new Array(worldWidth * worldHeight);
+
+    for(var y = 1; y < worldHeight; ++y)
     {
-        for (var j = 1; j < canvasW - 1; j++)
+        for(var x = 1; x < worldWidth; ++x)
         {
-            availablePos.push(new Pos(j, i));
+            addAvailablePos(x, y);
         }
     }
 
-    head = new SnakePiece(15, 15, new SnakePiece(14, 15, new SnakePiece(13, 15, null)));
-    removeAvailablePos(15, 15);
-    removeAvailablePos(14, 15);
-    removeAvailablePos(13, 15); 
+    worm = new Worm(new Pos(Math.floor(worldWidth / 2), Math.floor(worldHeight / 2)), "left", 2);
+
+    var wormPiece = worm.back;
+    while(wormPiece)
+    {
+        removeAvailablePos(wormPiece.x, wormPiece.y);
+        wormPiece = wormPiece.previous;
+    }
 
     foodPos = [];
 
@@ -187,16 +355,30 @@ function startGame()
     window.requestAnimationFrame(gameLoop);
 }
 
-function removeAvailablePos (x, y)
+function removeAvailablePos(x, y)
 {
-    for (var i = 0; i < availablePos.length; i++)
-    { 
-        if (availablePos[i].x === x && availablePos[i].y === y)
-        {
-            availablePos.splice(i, 1);
-            break;
-        }
-    }
+    var pos = y * (worldWidth - 1) + x;
+
+    world[pos] = true;
+
+    var registerPos = availablePosRegister[pos];
+    availablePos.splice(registerPos, 1);
+}
+
+function addAvailablePos(x, y)
+{
+    var pos = y * (worldWidth - 1) + x;
+
+    world[pos] = false;
+
+    var registerPos = availablePos.length;
+    availablePos.push(new Pos(x, y));
+    availablePosRegister[pos] = registerPos;
+}
+
+function checkAvailablePos(x, y)
+{
+    return !world[y * (worldWidth - 1) + x];
 }
 
 function endGame()
@@ -207,7 +389,7 @@ function endGame()
 
 function spawnFood ()
 {
-    foodPos = availablePos[Math.round(Math.random() * (availablePos.length - 1))];
+    foodPos = availablePos[Math.floor(Math.random() * availablePos.length)];
 
     removeAvailablePos(foodPos.x, foodPos.y);
 }
@@ -246,87 +428,49 @@ function gameLoop ()
     {
         timeSinceLastMove = 0;
 
-        var prevPieceX = head.x;
-        var prevPieceY = head.y;
+        var lastBackPos = new Pos(worm.back.x, worm.back.y);
 
-        head.x += moveDirX;
-        head.y += moveDirY;
+        worm.move(moveDir);
+        movementCatched = false;
 
-        if (head.x < 1 || head.x > canvasW - 2 || head.y < 1 || head.y > canvasW - 2)
+        var headPos = new Pos(worm.head.x, worm.head.y);
+
+        if (headPos.x < 1 || headPos.x > canvasW - 2 || headPos.y < 1 || headPos.y > canvasW - 2)
         {
             endGame();
             return;
         }
 
-        var snakePiece = head.previous;
-        while (snakePiece)
+        if(foodPos.x == headPos.x && foodPos.y == headPos.y)
         {
-            if (head.x === snakePiece.x && head.y === snakePiece.y)
-            {
-                if ( snakePiece === head.previous )
-                {
-                    moveDirX *= -1;
-                    moveDirY *= -1;
+            addAvailablePos(foodPos.x, foodPos.y);
 
-                    head.x = prevPieceX + moveDirX;
-                    head.y = prevPieceY + moveDirY;
-
-                    break;
-                }
-                endGame();
-                return;
-            }
-
-            snakePiece = snakePiece.previous;
-        } 
-
-        var hasEaten = false;
-        if (foodPos.x === head.x && foodPos.y === head.y )
-        {
             setScore(++foodEaten);
             spawnFood();
             
             timeToMove = ( 400 / Math.log( foodEaten + 15 ));
             
-            hasEaten = true;
+            worm.addNewPieceAtBack(lastBackPos);
         }
-
-        removeAvailablePos(head.x, head.y);
-
-        var snakePiece = head.previous;
-        while (snakePiece)
+        else
         {
-            var auxX = snakePiece.x;
-            var auxY = snakePiece.y;
+            addAvailablePos(lastBackPos.x, lastBackPos.y);
 
-            snakePiece.x = prevPieceX;
-            snakePiece.y = prevPieceY;
-
-            prevPieceX = auxX;
-            prevPieceY = auxY;
-
-            if (!snakePiece.previous)
+            if(!checkAvailablePos(headPos.x, headPos.y))
             {
-                if (hasEaten)
-                {
-                    snakePiece.previous = new SnakePiece(auxX, auxY, null);
-                    break;
-                }
-                else
-                {
-                    availablePos.push(new Pos(auxX, auxY));
-                }
+                endGame();
+                return;
             }
-
-            snakePiece = snakePiece.previous;
         }
+
+        removeAvailablePos(headPos.x, headPos.y);
     }
 
-    var curSnakePiece = head;
-    while(curSnakePiece)
+    var wormPiece = worm.back;
+    while(wormPiece)
     {
-        drawPixel(curSnakePiece.x, curSnakePiece.y, wormColor);
-        curSnakePiece = curSnakePiece.previous;
+        drawPixel(wormPiece.x, wormPiece.y, wormColor);
+        wormPiece = wormPiece.previous;
     }
 
     drawPixel(foodPos.x, foodPos.y, foodColor);
