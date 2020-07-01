@@ -68,7 +68,7 @@ var touchPrevY;
 var touchDeltaX;
 var touchDeltaY;
 
-var movementCatched = false;
+var nextMovement;
 
 document.ontouchstart = function (event)
 { 
@@ -80,66 +80,57 @@ document.ontouchstart = function (event)
 
 document.ontouchmove = function (event)
 {
-    if(!movementCatched)
+    touchDeltaX += event.touches[0].screenX - touchPrevX;
+    touchDeltaY += event.touches[0].screenY - touchPrevY;
+
+    touchPrevX = event.touches[0].screenX;
+    touchPrevY = event.touches[0].screenY;
+
+    if(touchDeltaY <= -touchDeltaTreshold)
     {
-        touchDeltaX += event.touches[0].screenX - touchPrevX;
-        touchDeltaY += event.touches[0].screenY - touchPrevY;
-
-        touchPrevX = event.touches[0].screenX;
-        touchPrevY = event.touches[0].screenY;
-
-        if(touchDeltaY <= -touchDeltaTreshold)
-        {
-            if(moveDir == "down") return;
-             moveDir = "up";
-        }
-        else if(touchDeltaX >= touchDeltaTreshold)
-        {
-            if(moveDir == "left") return;
-            moveDir = "right";
-        }
-        else if(touchDeltaY >= touchDeltaTreshold)
-        {
-            if(moveDir == "up") return;
-            moveDir = "down";
-        }
-        else if(touchDeltaX <= -touchDeltaTreshold) 
-        {
-            if(moveDir == "right") return;
-            moveDir = "left";
-        }
-
-        movementCatched = true;
+        if(moveDir == "down") return;
+        nextMovement = "up";
+    }
+    else if(touchDeltaX >= touchDeltaTreshold)
+    {
+        if(moveDir == "left") return;
+        nextMovement = "right";
+    }
+    else if(touchDeltaY >= touchDeltaTreshold)
+    {
+        if(moveDir == "up") return;
+        nextMovement = "down";
+    }
+    else if(touchDeltaX <= -touchDeltaTreshold) 
+    {
+        if(moveDir == "right") return;
+        nextMovement = "left";
     }
 }
 
 document.onkeydown = function (event)
 {
-    if(!movementCatched)
+    switch (event.key)
     {
-        switch (event.key)
-        {
-            case 'ArrowUp':
-                if(moveDir == "down") return;
-                moveDir = "up";
-                break;
+        case 'ArrowUp':
+            if(moveDir == "down") return;
+            nextMovement = "up";
+            break;
 
-            case 'ArrowRight':
-                if(moveDir == "left") return;
-                moveDir = "right";
-                break;
+        case 'ArrowRight':
+            if(moveDir == "left") return;
+            nextMovement = "right";
+            break;
 
-            case 'ArrowDown':
-                if(moveDir == "up") return;
-                moveDir = "down";
-                break;
+        case 'ArrowDown':
+            if(moveDir == "up") return;
+            nextMovement = "down";
+            break;
 
-            case 'ArrowLeft':
-                if(moveDir == "right") return;
-                moveDir = "left";
-                break;
-        }
-        movementCatched = true;
+        case 'ArrowLeft':
+            if(moveDir == "right") return;
+            nextMovement = "left";
+            break;
     }
 }
 
@@ -297,13 +288,6 @@ class Worm
     }
 }
 
-function SnakePiece(x, y, previous) {
-    this.x = x;
-    this.y = y;
-
-    this.previous = previous;
-}
-
 var worm;
 var world;
 var availablePos;
@@ -311,6 +295,7 @@ var availablePosRegister;
 
 function startGame()
 {
+    nextMovement = "up";
     moveDir = "up";
 
     timeToMove = 150;
@@ -430,8 +415,8 @@ function gameLoop ()
 
         var lastBackPos = new Pos(worm.back.x, worm.back.y);
 
+        moveDir = nextMovement;
         worm.move(moveDir);
-        movementCatched = false;
 
         var headPos = new Pos(worm.head.x, worm.head.y);
 
